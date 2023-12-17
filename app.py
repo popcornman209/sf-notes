@@ -54,10 +54,7 @@ def drawMenu(content,subText):
         elif len(temp) < termSize.columns - outlineWidth: temp += " "*(termSize.columns-outlineWidth-len(temp))
         output += temp+" ║\n"
     output += "╚"+"═"*(termSize.columns-2)+"╝\n"+subText+"\033[?25l"
-    #type.draw(output)
-    if sys.platform == "win32": os.system("cls")
-    else: os.system("clear")
-    sys.stdout.write(output)
+    sys.stdout.write("\033c"+output)
 
 def getChoice(choices, text):
     scroll = 0
@@ -123,6 +120,7 @@ def decrypt(add,multiply,message):
         try: out = out+letters[int(charNum)]
         except: print(charNum)
     return(out)
+
 
 isOpen = True
 while isOpen:
