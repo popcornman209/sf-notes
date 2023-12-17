@@ -41,6 +41,9 @@ class _GetchWindows:
         return msvcrt.getch()
 getch = _Getch()
 
+if sys.platform == "win32":
+    import subprocess
+    subprocess.run("", shell=True) #to fix a bug with windows
 
 def drawMenu(content,subText):
     termSize = os.get_terminal_size()
