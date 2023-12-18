@@ -123,7 +123,7 @@ def decrypt(add,multiply,message):
         try: out = out+letters[int(charNum)]
         except: print(charNum)
     return(out)
-
+    
 
 isOpen = True
 while isOpen:
@@ -157,11 +157,10 @@ while isOpen:
                     name = sys.stdin.readline()+".txt"
 
                 choice = getChoice(["yes","no"],"would you like to add date and time in file?")
-                if choice == 1: output = time
+                if choice == 0: output = time
                 else: output = ""
                 
-                if sys.platform == "win32": os.system("cls")
-                else: os.system("clear")
+                print("\033[? 25h\033c")
                 if name in files:
                     print("continuing file...")
                     output = decrypt(add, multiply, open(folder+name, "r").read()) + "\n\n" + output
