@@ -1,5 +1,5 @@
 import getpass, datetime, os, sys, time
-baseFolder = "C:/Users/mail/Desktop/random shi/pyFiles/"
+baseFolder = "files/"
 
 letters = [" ","Q","W","E","R","T","Y","U","I","O","P","A","S","D","F","G","H","J","K","L","Z","X","C","V","B","N","M","q","w","e","r","t","y","u","i","o","p","a","s","d","f","g","h","j","k","l","z","x","c","v","b","n","m","1","2","3","4","5","6","7","8","9","0","!","@","#","$","%","^","&","*","(",")","-","_","=","+","[","]","{","}",":",";","'",'"',",",".","/","<",">","?","|", "\n"]
 
@@ -10,17 +10,11 @@ outlineWidth = 2
 
 class _Getch:
     def __init__(self):
-        try:
-            self.impl = _GetchWindows()
-        except ImportError:
-            self.impl = _GetchUnix()
-
+        try: self.impl = _GetchWindows()
+        except ImportError: self.impl = _GetchUnix()
     def __call__(self): return self.impl()
-
 class _GetchUnix:
-    def __init__(self):
-        import tty, sys
-
+    def __init__(self): import tty, sys
     def __call__(self):
         import sys, tty, termios
         fd = sys.stdin.fileno()
@@ -28,14 +22,10 @@ class _GetchUnix:
         try:
             tty.setraw(sys.stdin.fileno())
             ch = sys.stdin.read(1)
-        finally:
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
+        finally: termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch.encode("UTF-8")
 class _GetchWindows:
-    def __init__(self):
-        import msvcrt
-
+    def __init__(self): import msvcrt
     def __call__(self):
         import msvcrt
         return msvcrt.getch()
@@ -71,20 +61,24 @@ def getChoice(choices, text):
             if i == cursor: display += "> "
             else: display += "  "
             display += choices[i]+"\n"
-        drawMenu(display,"up/down/left/right enter/esc")
+        if sys.platform == "win32": bottomTxt = "up/down/left/right enter/esc"
+        else: bottomTxt = "up/down/left/right enter/backspace"
+        drawMenu(display, bottomTxt)
 
         key = getch()
-        if key == b'\x1b': return -1
+        if (sys.platform == "win32" and key == b'\x1b') or (sys.platform != "win32" and key == b'\x7f'): return -1
         elif key == b'\r': return cursor
-        elif key == b'\x00' or key == b'\xe0':
+        elif key == b'\x00' or key == b'\xe0' or key == b'\x1b':
             key2 = getch()
-            if key2 == b'H':
+            if key2 == b'[': key3 = getch()
+            else: key3 = ""
+            if key2 == b'H' or key3 == b'A':
                 cursor = max(0,cursor-1)
                 if cursor < scroll: scroll = max(0,scroll-1)
-            elif key2 == b'P':
+            elif key2 == b'P' or key3 == b'B':
                 cursor = min(cursor+1,len(choices)-1)
                 if cursor-scroll > termSize.lines-outlineHeight-3: scroll = min(scroll+1,len(choices)-(termSize.lines-outlineHeight)+2)
-                
+
 
 def toNumbers(string):
     output = []
@@ -123,7 +117,7 @@ def decrypt(add,multiply,message):
         try: out = out+letters[int(charNum)]
         except: print(charNum)
     return(out)
-    
+  
 
 isOpen = True
 while isOpen:
@@ -159,7 +153,7 @@ while isOpen:
                 choice = getChoice(["yes","no"],"would you like to add date and time in file?")
                 if choice == 0: output = time
                 else: output = ""
-                
+
                 print("\033[? 25h\033c")
                 if name in files:
                     print("continuing file...")
@@ -209,5 +203,5 @@ while isOpen:
                 for i in range(len(files)):
                     print(decrypt(add, multiply, open(folder+files[i], "r").read()))
                 input("\npress enter to continue...")
-            
+
             elif option == -1: inFolder = False
