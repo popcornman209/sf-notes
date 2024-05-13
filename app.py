@@ -1,8 +1,9 @@
-import getpass, datetime, os, sys, time
-baseFolder = "files/"
-
-letters = [" ","Q","W","E","R","T","Y","U","I","O","P","A","S","D","F","G","H","J","K","L","Z","X","C","V","B","N","M","q","w","e","r","t","y","u","i","o","p","a","s","d","f","g","h","j","k","l","z","x","c","v","b","n","m","1","2","3","4","5","6","7","8","9","0","!","@","#","$","%","^","&","*","(",")","-","_","=","+","[","]","{","}",":",";","'",'"',",",".","/","<",">","?","|", "\n"]
-
+import getpass, datetime, os, sys, time, base64
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.fernet import Fernet
+baseFolder = "notes/"
 
 logo = "\033[35m   ________    _  __     __        \n  / __/ __/___/ |/ /__  / /____ ___\n _\ \/ _//___/    / _ \/ __/ -_|_-<\n/___/_/     /_/|_/\___/\__/\__/___/\n\n\033[0m"
 outlineHeight = 8
@@ -78,46 +79,29 @@ def getChoice(choices, text):
             elif key2 == b'P' or key3 == b'B':
                 cursor = min(cursor+1,len(choices)-1)
                 if cursor-scroll > termSize.lines-outlineHeight-3: scroll = min(scroll+1,len(choices)-(termSize.lines-outlineHeight)+2)
+                
+
+def genKey(passkey):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt = b"Cn\xd6\x9e'N+\xe7\x9e;\xa9Q\x18\x91`\x88",
+        iterations=100000,
+        backend=default_backend()
+    )
+    key = kdf.derive(passkey.encode())
+    return base64.urlsafe_b64encode(key)
+
+def encrypt(key,data):
+    fernet = Fernet(key)
+    return fernet.encrypt(data.encode())
+def decrypt(key,data):
+    fernet = Fernet(key)
+    return fernet.decrypt(data).decode()
 
 
-def toNumbers(string):
-    output = []
-    for i in string:
-        if i in letters:
-            for x in range(len(letters)):
-                if letters[x] == i:
-                    output.append(x)
-                    break
-        else:
-            print('warning: unrecognized character "'+i+'". skipping.')
-    return(output)
-
-def encrypt(add,multiply,message):
-    nums = toNumbers(message)
-    out = ""
-    for num in nums:
-        finalNum = (num+add)*multiply
-        rollOverNum = 0
-        while finalNum > len(letters)-1:
-            rollOverNum += 1
-            finalNum -= len(letters)-1
-        out = out+str(rollOverNum)+"\\"+letters[finalNum]+"\\"
-    return(out)
-
-def decrypt(add,multiply,message):
-    msg = message.split("\\")
-    msg.pop(len(msg)-1)
-    out = ""
-    for i in range(int(len(msg)/2)):
-        charNum = toNumbers(msg[i*2+1])[0]
-        num = int(msg[i*2])
-        charNum += (len(letters)-1)*num
-        charNum /= multiply
-        charNum -= add
-        try: out = out+letters[int(charNum)]
-        except: print(charNum)
-    return(out)
-  
+drawMenu("if your leo, you know what to do\nif your not, just close out of this window.","press enter to continue...")
+input()
 
 isOpen = True
 while isOpen:
@@ -128,16 +112,12 @@ while isOpen:
         folder = baseFolder+currentFolder+"/"
 
         drawMenu("password: ","type password (you cant see)")
-        Pass = toNumbers(getpass.getpass(""))
-        add = 0
-        for num in Pass:
-            add += num
-        drawMenu("number: ","type number (you cant see)")
-        multiply = int(getpass.getpass(""))
+        Pass = genKey(getpass.getpass(""))
 
         inFolder = True
         while inFolder:
-            files = os.listdir(folder)
+            files = sorted(os.listdir(folder), key=lambda x: os.path.getctime(os.path.join(folder, x)))
+            #files = os.listdir(folder)
             today = datetime.datetime.now()
             name = today.strftime("%m-%d-%y.txt")
             time = today.strftime("--%b/%d/%y %I:%M %p--")
@@ -153,17 +133,17 @@ while isOpen:
                 choice = getChoice(["yes","no"],"would you like to add date and time in file?")
                 if choice == 0: output = time
                 else: output = ""
-
+                
                 print("\033[? 25h\033c")
                 if name in files:
                     print("continuing file...")
-                    output = decrypt(add, multiply, open(folder+name, "r").read()) + "\n\n" + output
+                    output = decrypt(Pass, open(folder+name, "rb").read()) + "\n\n" + output
                 else: print("creating new file...")
 
-                with open(folder+name, "w") as f:
+                with open(folder+name, "wb") as f:
                     print(output)
                     output = output+"\n"+input("write: ")
-                    f.write(encrypt(add, multiply, output))
+                    f.write(encrypt(Pass, output))
                 drawMenu('saved.',"press enter to continue...")
                 input()
 
@@ -171,14 +151,14 @@ while isOpen:
                 name = files[getChoice(files,"choose a file to read:")]
                 if sys.platform == "win32": os.system("cls")
                 else: os.system("clear")
-                print(decrypt(add, multiply, open(folder+name, "r").read()))
+                print(decrypt(Pass, open(folder+name, "rb").read()))
                 input("\npress enter to continue...")
 
             elif option == 2:
                 name = files[getChoice(files,"choose a file to edit:")]
 
-                with open(folder+name, "r") as f:
-                    data = decrypt(add, multiply, f.read())
+                with open(folder+name, "rb") as f:
+                    data = decrypt(Pass, f.read())
                 with open(baseFolder+"temp.txt","w") as f :
                     f.write(data)
 
@@ -187,11 +167,12 @@ while isOpen:
                     os.system("notepad.exe "+baseFolder+"temp.txt")
                 else:
                     drawMenu("go to "+baseFolder+"temp.txt to edit file\npress enter when done.","press enter when done...")
+                    os.system("nano "+baseFolder+"temp.txt")
 
                 with open(baseFolder+"temp.txt", "r") as f:
                     output = f.read()
-                with open(folder+name, "w") as f:
-                    f.write(encrypt(add, multiply, output))
+                with open(folder+name, "wb") as f:
+                    f.write(encrypt(Pass, output))
                 os.remove(baseFolder+"temp.txt")
 
                 drawMenu('saved.',"press enter to continue...")
@@ -201,7 +182,7 @@ while isOpen:
                 if sys.platform == "win32": os.system("cls")
                 else: os.system("clear")
                 for i in range(len(files)):
-                    print(decrypt(add, multiply, open(folder+files[i], "r").read()))
+                    print(decrypt(Pass, open(folder+files[i], "rb").read()))
                 input("\npress enter to continue...")
-
+            
             elif option == -1: inFolder = False
