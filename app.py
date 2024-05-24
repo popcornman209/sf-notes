@@ -99,10 +99,6 @@ def decrypt(key,data):
     fernet = Fernet(key)
     return fernet.decrypt(data).decode()
 
-
-drawMenu("if your leo, you know what to do\nif your not, just close out of this window.","press enter to continue...")
-input()
-
 isOpen = True
 while isOpen:
     choice = getChoice(os.listdir(baseFolder),"pick folder:")
